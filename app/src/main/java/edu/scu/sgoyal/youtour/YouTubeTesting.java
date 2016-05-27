@@ -1,0 +1,59 @@
+package edu.scu.sgoyal.youtour;
+
+import android.content.Intent;
+import android.support.v4.app.FragmentManager;
+import android.support.v7.app.ActionBarActivity;
+import android.os.Bundle;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
+import android.widget.Button;
+import android.widget.TextView;
+
+;
+
+public class YouTubeTesting extends MenuActivity
+{
+
+    private static final int RECOVERY_REQUEST = 1;
+    private String destinationName;
+    private  Destination d;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState)
+    {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.layout);
+        Intent intent = getIntent();
+        destinationName = (String) intent.getExtras().get("DESTINATION");
+        d = Destination.getDestinationBasedOnName(destinationName);
+
+//        Log.i("sgoyal" , "bkjdsfbkjsdf");
+        final TextView textView = (TextView) findViewById(R.id.textView);
+
+
+        textView.setText(d.getName());
+
+        final TextView textView2= (TextView) findViewById(R.id.textView1);
+
+        textView2.setText(d.getDescription());
+        final Button button = (Button)findViewById(R.id.button1);
+        button.setOnClickListener(new View.OnClickListener() {
+                                      @Override
+                                      public void onClick(View v) {
+
+                                          Intent in = new Intent(YouTubeTesting.this, MapsActivity.class);
+                                          startActivity(in);
+                                      }
+                                  }
+        );
+        YouTubeFragment fragment = new YouTubeFragment(d);
+        FragmentManager manager = getSupportFragmentManager();
+        manager.beginTransaction()
+                .replace(R.id.main, fragment)
+                .addToBackStack(null)
+                .commit();
+    }
+
+
+}

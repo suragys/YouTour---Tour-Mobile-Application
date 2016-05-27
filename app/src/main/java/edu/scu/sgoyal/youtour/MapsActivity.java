@@ -1,0 +1,372 @@
+package edu.scu.sgoyal.youtour;
+
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.FragmentActivity;
+import android.os.Bundle;
+import android.support.v4.content.ContextCompat;
+import android.util.Log;
+import android.view.Menu;
+import android.view.View;
+import android.widget.Button;
+import android.widget.Toast;
+
+import com.estimote.sdk.Beacon;
+import com.estimote.sdk.BeaconManager;
+import com.estimote.sdk.Region;
+import com.estimote.sdk.SystemRequirementsChecker;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.Projection;
+import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.UiSettings;
+import com.google.android.gms.maps.internal.IGoogleMapDelegate;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Created by shubhamgoyal on 5/24/16.
+ */
+
+public class MapsActivity extends MenuActivity implements OnMapReadyCallback {
+
+    static int currentPosition = 0 ;
+    IGoogleMapDelegate iGoogleMapDelegate;
+    private GoogleMap mMap;
+    LatLng latLngSCU;
+    private static BeaconManager beaconManager;
+    private static Context appContext ;
+
+    private static BeaconManager getBeaconManager() {
+        if(beaconManager == null){
+            beaconManager = new BeaconManager(appContext);
+        }
+        return beaconManager;
+    }
+
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        SystemRequirementsChecker.checkWithDefaultDialogs(this);
+    }
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        intialize();
+        appContext = this.getApplicationContext();
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_maps);
+//        BeaconManager bm = MapsActivity.getBeaconManager();
+
+        // Obtain the SupportMapFragment and get notified when the map is ready to be used.
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.map);
+        mapFragment.getMapAsync(this);
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.ACCESS_COARSE_LOCATION}, 0);
+        }
+
+        Log.i("MapsActivity", "OnCreate");
+        Log.i("MapsActivity", currentPosition + "");
+        // TODO dont hard code
+        latLngSCU = new LatLng(37.349523, -121.938729);
+        Button b = ((Button) findViewById(R.id.startTourButton));
+        if(currentPosition != 0)
+        {
+            b.setText("Continue Tour");
+            Log.i("MapsActivity", "Set text");
+
+
+        }
+        b.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+                stopAllBeaconMonitoring();
+                Destination d = Destination.getDestinations().get(currentPosition);
+                if(currentPosition == Destination.getDestinations().size() - 1)
+                {
+                    currentPosition = 0;
+                }
+                else
+                {
+                    currentPosition++;
+                    Log.i("MapsActivity", "Position Increase");
+
+                }
+                if (d != null) {
+                    Region r = d.getRegion();
+//                            getRegionBasedOnDestination(marker.getTitle().toString());
+                    if (r != null) {
+                        setBeaconMonitoring(r);
+                        startNavigation(d);
+                    } else {
+                        Toast.makeText(getApplicationContext(), "Info clicked = " + d.getName().toString() + " does not have a beacon associated with it", Toast.LENGTH_SHORT).show();
+                    }
+                } else
+                {
+                    Toast.makeText(getApplicationContext(), "Info clicked = " + d.getName().toString() + " is not a valid destination", Toast.LENGTH_SHORT).show();
+                }
+
+
+//                Uri gmmIntentUri = Uri.parse("google.navigation:q=" + d.getLatLng() + "+&mode=w");
+//                Log.i("sgoyal", gmmIntentUri.toString());
+//                Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
+//                mapIntent.putExtra("DESTINATION", d.getName());
+//                currentPosition++;
+//                mapIntent.setPackage("com.google.android.apps.maps");
+//                startActivity(mapIntent);
+//                finish();
+//                Intent intent = new Intent(MapsActivity.this, DestinationListActivity.class);
+//                startActivity(intent);
+
+            }
+        });
+
+
+
+    }
+
+    private void intialize() {
+
+
+    // TODO initialize all the pre-requisite needed
+
+    }
+
+
+
+
+    private void stopAllBeaconMonitoring(){
+        BeaconManager bm = MapsActivity.getBeaconManager();
+        for (Destination d : Destination.getDestinations()) {
+            if(d.getRegion() != null)
+            {
+                bm.stopMonitoring(d.getRegion());
+
+            }
+        }
+    }
+
+
+    /**
+     * Manipulates the map once available.
+     * This callback is triggered when the map is ready to be used.
+     * This is where we can add markers or lines, add listeners or move the camera. In this case,
+     * we just add a marker near Sydney, Australia.
+     * If Google Play services is not installed on the device, the user will be prompted to install
+     * it inside the SupportMapFragment. This method will only be triggered once the user has
+     * installed Google Play services and returned to the app.
+     */
+
+    @Override
+    public void onMapReady(GoogleMap googleMap) {
+        mMap = googleMap;
+//        mMap.setIndoorEnabled(true);
+        List<MarkerOptions> markerOptionsList = new ArrayList<MarkerOptions>();
+        List<Marker> markers = new ArrayList<Marker>();
+        Log.i("MapsActivity", "OnMapReady");
+        MarkerOptions mo;
+        for (Destination d : Destination.getDestinations()) {
+            mo = new MarkerOptions().position(d.getLatLng()).title(d.getName())
+                    .snippet("Click Here To Start Navigation");
+            if(Utility.getTourStatus().get(d))
+            {
+                Log.i("MapsActivity" , "True for visited");
+                mo.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
+            }
+
+            Marker m = mMap.addMarker(mo);
+            markerOptionsList.add(mo);
+            markers.add(m);
+
+
+        }
+//        Toast.makeText(this, "in on map ready", Toast.LENGTH_LONG).show();
+
+        //mMap.addMarker(new MarkerOptions().position(latLngSCU).title("Santa Clara University").snippet("Santa Clara"));
+
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLngSCU, 16.0f));
+//        mMap.setInfoWindowAdapter(new GoogleMap.InfoWindowAdapter() {
+//            @Override
+//            public View getInfoWindow(Marker marker) {
+//                View v = new View(getApplicationContext());
+//                ArrayList<View> views = new ArrayList<View>();
+//                TextView tv = new TextView(getApplicationContext());
+//                tv.setText("Hello");
+//                views.add((View)tv);
+//                v.addChildrenForAccessibility(views);
+//                return v;
+//            }
+//
+//            @Override
+//            public View getInfoContents(Marker marker) {
+//                return null;
+//            }
+//        });
+
+
+        mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
+            @Override
+            public boolean onMarkerClick(Marker marker) {
+//                Toast.makeText(getApplicationContext(),"Marker clicked = "+marker.getTitle().toString(),Toast.LENGTH_SHORT).show();
+                return false;
+            }
+        });
+
+        mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
+            @Override
+            public void onInfoWindowClick(Marker marker) {
+                stopAllBeaconMonitoring();
+                Toast.makeText(getApplicationContext(),"Info clicked = "+marker.getTitle().toString(),Toast.LENGTH_SHORT).show();
+                Destination d = Destination.getDestinationBasedOnName(marker.getTitle().toString());
+
+                if (d != null) {
+                    Region r = d.getRegion();
+//                            getRegionBasedOnDestination(marker.getTitle().toString());
+                    if (r != null) {
+                        setBeaconMonitoring(r);
+                        startNavigation(d);
+                    } else {
+                        Toast.makeText(getApplicationContext(), "Info clicked = " + marker.getTitle().toString() + " does not a beacon associated with it", Toast.LENGTH_SHORT).show();
+                    }
+                } else
+                {
+                    Toast.makeText(getApplicationContext(), "Info clicked = " + marker.getTitle().toString() + " is not a valid destination", Toast.LENGTH_SHORT).show();
+                }
+
+            }
+        });
+
+        UiSettings ui = mMap.getUiSettings();
+
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED &&
+                ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) ==
+                        PackageManager.PERMISSION_GRANTED) {
+            mMap.setMyLocationEnabled(true);
+            ui.setMyLocationButtonEnabled(true);
+        } else {
+            Toast.makeText(this, "error in map", Toast.LENGTH_LONG).show();
+        }
+
+        ui.setAllGesturesEnabled(true);
+        ui.setCompassEnabled(true);
+        ui.setZoomControlsEnabled(true);
+
+        Projection projection = mMap.getProjection();
+//        markers.get(0).setInfoWindowAnchor();
+
+
+    }
+
+    private void startNavigation(Destination d) {
+
+        String latLng = d.getLat() + "," + d.getLng();
+        Uri gmmIntentUri = Uri.parse("google.navigation:q=" + latLng + "+&mode=w");
+//        System.out.println(gmmIntentUri);
+//        currentPosition++;
+        Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
+        mapIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+        mapIntent.putExtra("DESTINATION",d);
+        mapIntent.setPackage("com.google.android.apps.maps");
+        startActivity(mapIntent);
+    }
+
+
+    private void setBeaconMonitoring(final Region region) {
+
+
+        beaconManager.connect(new BeaconManager.ServiceReadyCallback() {
+            @Override
+            public void onServiceReady() {
+//                beaconManager.startMonitoring(new Region(
+//                        "monitored region",
+//                        UUID.fromString("B9407F30-F5F8-466E-AFF9-25556B57FE6D"),
+//                        47753, 22035));
+                beaconManager.startMonitoring(region);
+            }
+
+
+
+        });
+
+        beaconManager.setMonitoringListener(new BeaconManager.MonitoringListener() {
+
+            @Override
+            public void onEnteredRegion(Region region, List<Beacon> list) {
+
+                for(Beacon b : list)
+                {
+                    Log.i("Beacons",b.getMajor() + "-" + b.getMinor() + "-" + b.getProximityUUID());
+                }
+                Intent i = new Intent(appContext, YouTubeTesting.class);
+                Destination d = Destination.getDestinationBasedOnRegion(region);
+                i.putExtra("DESTINATION", d.getName());
+                Utility.getTourStatus().put(d, true);
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                showNotification("Reached " + d.getName(), " Welocome to " + d.getName());
+//                showNotification(
+//                        "Your gate closes in 47 minutes.",
+//                        "Current security wait time is 15 minutes, "
+//                                + "and it's a 5 minute walk from security to the gate. "
+//                                + "Looks like you've got plenty of time!");
+                startActivity(i);
+
+            }
+
+            @Override
+            public void onExitedRegion(Region region) {
+                // could add an "exit" notification too if you want (-:
+                Log.i("Beacons", "In Exit Region");
+            }
+        });
+    }
+
+
+
+    public static void showNotification(String title, String message) {
+        Intent notifyIntent = new Intent(MapsActivity.appContext, YouTubeTesting.class);
+        notifyIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        Destination d = Destination.getDestinationBasedOnName(title);
+        if(d != null)
+        {
+            notifyIntent.putExtra("DESTINATION", d.getName());
+            PendingIntent pendingIntent = PendingIntent.getActivities(MapsActivity.appContext, 0,
+                    new Intent[]{notifyIntent}, PendingIntent.FLAG_UPDATE_CURRENT);
+            Notification notification = new Notification.Builder(MapsActivity.appContext)
+                    .setSmallIcon(android.R.drawable.ic_dialog_info)
+                    .setContentTitle(title)
+                    .setContentText(message)
+                    .setAutoCancel(true)
+                    .setContentIntent(pendingIntent)
+                    .build();
+            notification.defaults |= Notification.DEFAULT_SOUND;
+            NotificationManager notificationManager =
+                    (NotificationManager) MapsActivity.appContext.getSystemService(Context.NOTIFICATION_SERVICE);
+            notificationManager.notify(1, notification);
+        }
+        else
+        {
+            return;
+        }
+
+    }
+
+
+
+}
