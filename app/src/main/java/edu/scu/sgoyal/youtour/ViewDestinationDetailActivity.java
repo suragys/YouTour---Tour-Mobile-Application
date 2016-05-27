@@ -2,17 +2,14 @@ package edu.scu.sgoyal.youtour;
 
 import android.content.Intent;
 import android.support.v4.app.FragmentManager;
-import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
 ;
 
-public class YouTubeTesting extends MenuActivity
+public class ViewDestinationDetailActivity extends MenuActivity
 {
 
     private static final int RECOVERY_REQUEST = 1;
@@ -28,7 +25,6 @@ public class YouTubeTesting extends MenuActivity
         destinationName = (String) intent.getExtras().get("DESTINATION");
         d = Destination.getDestinationBasedOnName(destinationName);
 
-//        Log.i("sgoyal" , "bkjdsfbkjsdf");
         final TextView textView = (TextView) findViewById(R.id.textView);
 
 
@@ -42,7 +38,7 @@ public class YouTubeTesting extends MenuActivity
                                       @Override
                                       public void onClick(View v) {
 
-                                          Intent in = new Intent(YouTubeTesting.this, MapsActivity.class);
+                                          Intent in = new Intent(ViewDestinationDetailActivity.this, MapsActivity.class);
                                           startActivity(in);
                                       }
                                   }
