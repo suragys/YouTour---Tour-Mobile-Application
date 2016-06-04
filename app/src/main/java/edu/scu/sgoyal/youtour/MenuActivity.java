@@ -9,6 +9,8 @@ import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
 import android.view.MenuItem;
 
+import com.firebase.client.Firebase;
+
 /**
  * Created by shubhamgoyal on 5/24/16.
  */
@@ -26,6 +28,7 @@ public class MenuActivity extends AppCompatActivity
         actionBar.setDisplayShowHomeEnabled(true);
         actionBar.setHomeButtonEnabled(true);
         actionBar.setIcon(R.mipmap.ic_launcher);
+
 
 
     }

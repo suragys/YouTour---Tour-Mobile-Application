@@ -1,5 +1,6 @@
 package edu.scu.sgoyal.youtour;
 
+import android.app.ActivityManager;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -7,12 +8,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
-import android.view.Menu;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
@@ -24,7 +23,6 @@ import com.estimote.sdk.SystemRequirementsChecker;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
-import com.google.android.gms.maps.Projection;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.UiSettings;
 import com.google.android.gms.maps.internal.IGoogleMapDelegate;
@@ -48,6 +46,8 @@ public class MapsActivity extends MenuActivity implements OnMapReadyCallback {
     LatLng latLngSCU;
     private static BeaconManager beaconManager;
     private static Context appContext ;
+    private static Intent mapIntent;
+    public static Boolean NAVIGATION_STATUS = Boolean.FALSE;
 
     private static BeaconManager getBeaconManager() {
         if(beaconManager == null){
@@ -66,6 +66,7 @@ public class MapsActivity extends MenuActivity implements OnMapReadyCallback {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         intialize();
         appContext = this.getApplicationContext();
         super.onCreate(savedInstanceState);
@@ -268,7 +269,7 @@ public class MapsActivity extends MenuActivity implements OnMapReadyCallback {
         ui.setCompassEnabled(true);
         ui.setZoomControlsEnabled(true);
 
-        Projection projection = mMap.getProjection();
+//        Projection projection = mMap.getProjection();
 //        markers.get(0).setInfoWindowAnchor();
 
 
@@ -280,11 +281,13 @@ public class MapsActivity extends MenuActivity implements OnMapReadyCallback {
         Uri gmmIntentUri = Uri.parse("google.navigation:q=" + latLng + "+&mode=w");
 //        System.out.println(gmmIntentUri);
 //        currentPosition++;
-        Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
-        mapIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+        mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
+//        mapIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+//        mapIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+        mapIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         mapIntent.putExtra("DESTINATION",d);
         mapIntent.setPackage("com.google.android.apps.maps");
-        startActivity(mapIntent);
+        startActivityForResult(mapIntent,100);
     }
 
 
@@ -312,19 +315,23 @@ public class MapsActivity extends MenuActivity implements OnMapReadyCallback {
 
                 for(Beacon b : list)
                 {
-                    Log.i("Beacons",b.getMajor() + "-" + b.getMinor() + "-" + b.getProximityUUID());
+                    Log.i("List of beacons sensed ",b.getMajor() + "-" + b.getMinor() + "-" + b.getProximityUUID());
                 }
-                Intent i = new Intent(appContext, YouTubeTesting.class);
+
+                Intent i = new Intent(appContext, ViewDestinationDetailActivity.class);
                 Destination d = Destination.getDestinationBasedOnRegion(region);
                 i.putExtra("DESTINATION", d.getName());
                 Utility.getTourStatus().put(d, true);
-                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+//                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+//                i.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+//                i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
                 showNotification("Reached " + d.getName(), " Welocome to " + d.getName());
 //                showNotification(
 //                        "Your gate closes in 47 minutes.",
 //                        "Current security wait time is 15 minutes, "
 //                                + "and it's a 5 minute walk from security to the gate. "
 //                                + "Looks like you've got plenty of time!");
+                stopNavigation();
                 startActivity(i);
 
             }
@@ -340,7 +347,7 @@ public class MapsActivity extends MenuActivity implements OnMapReadyCallback {
 
 
     public static void showNotification(String title, String message) {
-        Intent notifyIntent = new Intent(MapsActivity.appContext, YouTubeTesting.class);
+        Intent notifyIntent = new Intent(MapsActivity.appContext, ViewDestinationDetailActivity.class);
         notifyIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
         Destination d = Destination.getDestinationBasedOnName(title);
         if(d != null)
@@ -363,6 +370,19 @@ public class MapsActivity extends MenuActivity implements OnMapReadyCallback {
         else
         {
             return;
+        }
+
+
+
+    }
+
+    public static void stopNavigation(){
+        ActivityManager am = (ActivityManager) appContext.getSystemService(ACTIVITY_SERVICE);
+
+        for (ActivityManager.RunningAppProcessInfo pid : am.getRunningAppProcesses())
+        {
+            if (pid.processName.equals("com.google.android.apps.maps"))
+                am.killBackgroundProcesses("com.google.android.apps.maps");
         }
 
     }

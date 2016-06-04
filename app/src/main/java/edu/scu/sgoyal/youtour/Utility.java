@@ -4,7 +4,6 @@ import com.estimote.sdk.Region;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -79,4 +78,5 @@ public class Utility {
 
         return destinations;
     }
+
 }
