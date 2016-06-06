@@ -246,14 +246,19 @@ public class MapsActivity extends MenuActivity implements OnMapReadyCallback {
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
 //        mMap.setIndoorEnabled(true);
+
         List<MarkerOptions> markerOptionsList = new ArrayList<MarkerOptions>();
         List<Marker> markers = new ArrayList<Marker>();
+
         Log.i("MapsActivity", "OnMapReady");
+
         MarkerOptions mo;
+
         for (Destination d : Destination.getDestinations()) {
             mo = new MarkerOptions().position(d.getLatLng()).title(d.getName())
                     .snippet("Click Here To Start Navigation");
-            if (Utility.getTourStatus().get(d)) {
+            Log.i(this.getClass().getName(), "Destination = " + d.toString());
+            if (Utility.getTourStatus().get(Destination.getDestinationBasedOnName(d.getName()))) {
                 Log.i("MapsActivity", "True for visited");
                 mo.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
             }
@@ -305,12 +310,14 @@ public class MapsActivity extends MenuActivity implements OnMapReadyCallback {
 
                 if (d != null) {
                     Region r = d.getRegion();
+                    Log.i("Region", r.toString());
 //                            getRegionBasedOnDestination(marker.getTitle().toString());
                     if (r != null) {
                         setBeaconMonitoring(r);
                         startNavigation(d);
-                    } else {
-                        Toast.makeText(getApplicationContext(), "Info clicked = " + marker.getTitle().toString() + " does not a beacon associated with it", Toast.LENGTH_SHORT).show();
+                    } else
+                    {
+                        Toast.makeText(getApplicationContext(), "Region is null = " + marker.getTitle().toString() + " does not a beacon associated with it", Toast.LENGTH_SHORT).show();
                     }
                 } else {
                     Toast.makeText(getApplicationContext(), "Info clicked = " + marker.getTitle().toString() + " is not a valid destination", Toast.LENGTH_SHORT).show();
@@ -386,9 +393,9 @@ public class MapsActivity extends MenuActivity implements OnMapReadyCallback {
                 i.putExtra("DESTINATION", d.getName());
                 Utility.getTourStatus().put(d, true);
 //                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-//                i.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+                i.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
 //                i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                showNotification("Reached " + d.getName(), " Welocome to " + d.getName());
+//                showNotification("Reached " + d.getName(), " Welocome to " + d.getName());
 //                showNotification(
 //                        "Your gate closes in 47 minutes.",
 //                        "Current security wait time is 15 minutes, "

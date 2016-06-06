@@ -4,7 +4,6 @@ import android.os.Parcel;
 import android.os.Parcelable;
 import android.util.Log;
 
-import com.estimote.sdk.Beacon;
 import com.estimote.sdk.Region;
 import com.google.android.gms.maps.model.LatLng;
 
@@ -24,7 +23,6 @@ public class Destination implements Parcelable {
     private double lat;
     private double lng;
     private Region region;
-    private Beacon beacon;
     private String regionTitle;
     private String UUID;
     private int becaonMinor;
@@ -77,7 +75,6 @@ public class Destination implements Parcelable {
         latLng = in.readParcelable(LatLng.class.getClassLoader());
         lat = in.readDouble();
         lng = in.readDouble();
-        beacon = in.readParcelable(Beacon.class.getClassLoader());
         region = in.readParcelable(Region.class.getClassLoader());
     }
 
@@ -152,6 +149,10 @@ public class Destination implements Parcelable {
     }
 
     public ArrayList<String> getComments() {
+        if(comments == null)
+        {
+            comments = new ArrayList<String>();
+        }
         return comments;
     }
 
@@ -173,14 +174,6 @@ public class Destination implements Parcelable {
 
     public void setLng(double lng) {
         this.lng = lng;
-    }
-
-    public Beacon getBeacon() {
-        return beacon;
-    }
-
-    public void setBeacon(Beacon beacon) {
-        this.beacon = beacon;
     }
 
     public String getName() {
@@ -295,7 +288,6 @@ public class Destination implements Parcelable {
         dest.writeDouble(lat);
         dest.writeDouble(lng);
         dest.writeParcelable(region, flags);
-        dest.writeParcelable(beacon, flags);
         dest.writeString(regionTitle);
         dest.writeString(UUID);
         dest.writeLong(becaonMinor);

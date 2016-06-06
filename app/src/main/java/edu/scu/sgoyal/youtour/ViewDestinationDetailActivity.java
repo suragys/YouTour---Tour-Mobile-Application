@@ -1,8 +1,9 @@
 package edu.scu.sgoyal.youtour;
 
 import android.content.Intent;
-import android.support.v4.app.FragmentManager;
 import android.os.Bundle;
+import android.support.v4.app.FragmentManager;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -27,7 +28,7 @@ public class ViewDestinationDetailActivity extends MenuActivity
 
         final TextView textView = (TextView) findViewById(R.id.textView);
 
-
+        Log.i(this.getClass().getName(), "Destination = " + d.toString());
         textView.setText(d.getName());
 
         final TextView textView2= (TextView) findViewById(R.id.textView1);
@@ -38,7 +39,8 @@ public class ViewDestinationDetailActivity extends MenuActivity
                                       @Override
                                       public void onClick(View v) {
 
-                                          Intent in = new Intent(ViewDestinationDetailActivity.this, MapsActivity.class);
+                                          Intent in = new Intent(ViewDestinationDetailActivity.this, Rating.class);
+                                          in.putExtra("DESTINATION" , d );
                                           startActivity(in);
                                       }
                                   }
