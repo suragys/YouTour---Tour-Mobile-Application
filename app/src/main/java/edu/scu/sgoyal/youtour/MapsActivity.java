@@ -20,6 +20,10 @@ import com.estimote.sdk.Beacon;
 import com.estimote.sdk.BeaconManager;
 import com.estimote.sdk.Region;
 import com.estimote.sdk.SystemRequirementsChecker;
+import com.firebase.client.DataSnapshot;
+import com.firebase.client.Firebase;
+import com.firebase.client.FirebaseError;
+import com.firebase.client.ValueEventListener;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -40,22 +44,59 @@ import java.util.List;
 
 public class MapsActivity extends MenuActivity implements OnMapReadyCallback {
 
-    static int currentPosition = 0 ;
-    IGoogleMapDelegate iGoogleMapDelegate;
-    private GoogleMap mMap;
-    LatLng latLngSCU;
-    private static BeaconManager beaconManager;
-    private static Context appContext ;
-    private static Intent mapIntent;
     public static Boolean NAVIGATION_STATUS = Boolean.FALSE;
+    public static ArrayList<Destination> dbDataDestinatios = new ArrayList<>();
+    static int currentPosition = 0;
+    private static BeaconManager beaconManager;
+    private static Context appContext;
+    private static Intent mapIntent;
+    IGoogleMapDelegate iGoogleMapDelegate;
+    LatLng latLngSCU;
+    static Firebase myFirebaseRef;
+    private GoogleMap mMap;
 
     private static BeaconManager getBeaconManager() {
-        if(beaconManager == null){
+        if (beaconManager == null) {
             beaconManager = new BeaconManager(appContext);
         }
         return beaconManager;
     }
 
+    public static void showNotification(String title, String message) {
+        Intent notifyIntent = new Intent(MapsActivity.appContext, ViewDestinationDetailActivity.class);
+        notifyIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        Destination d = Destination.getDestinationBasedOnName(title);
+        if (d != null) {
+            notifyIntent.putExtra("DESTINATION", d.getName());
+            PendingIntent pendingIntent = PendingIntent.getActivities(MapsActivity.appContext, 0,
+                    new Intent[]{notifyIntent}, PendingIntent.FLAG_UPDATE_CURRENT);
+            Notification notification = new Notification.Builder(MapsActivity.appContext)
+                    .setSmallIcon(android.R.drawable.ic_dialog_info)
+                    .setContentTitle(title)
+                    .setContentText(message)
+                    .setAutoCancel(true)
+                    .setContentIntent(pendingIntent)
+                    .build();
+            notification.defaults |= Notification.DEFAULT_SOUND;
+            NotificationManager notificationManager =
+                    (NotificationManager) MapsActivity.appContext.getSystemService(Context.NOTIFICATION_SERVICE);
+            notificationManager.notify(1, notification);
+        } else {
+            return;
+        }
+
+
+    }
+
+    public static void stopNavigation() {
+        ActivityManager am = (ActivityManager) appContext.getSystemService(ACTIVITY_SERVICE);
+
+        for (ActivityManager.RunningAppProcessInfo pid : am.getRunningAppProcesses()) {
+            if (pid.processName.equals("com.google.android.apps.maps"))
+                am.killBackgroundProcesses("com.google.android.apps.maps");
+        }
+
+    }
 
     @Override
     protected void onResume() {
@@ -67,7 +108,8 @@ public class MapsActivity extends MenuActivity implements OnMapReadyCallback {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
-        intialize();
+//        getDataFromFireBase(this);
+//        configureDestinaotions(dbDataDestinatios);
         appContext = this.getApplicationContext();
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
@@ -86,8 +128,7 @@ public class MapsActivity extends MenuActivity implements OnMapReadyCallback {
         // TODO dont hard code
         latLngSCU = new LatLng(37.349523, -121.938729);
         Button b = ((Button) findViewById(R.id.startTourButton));
-        if(currentPosition != 0)
-        {
+        if (currentPosition != 0) {
             b.setText("Continue Tour");
             Log.i("MapsActivity", "Set text");
 
@@ -99,12 +140,9 @@ public class MapsActivity extends MenuActivity implements OnMapReadyCallback {
 
                 stopAllBeaconMonitoring();
                 Destination d = Destination.getDestinations().get(currentPosition);
-                if(currentPosition == Destination.getDestinations().size() - 1)
-                {
+                if (currentPosition == Destination.getDestinations().size() - 1) {
                     currentPosition = 0;
-                }
-                else
-                {
+                } else {
                     currentPosition++;
                     Log.i("MapsActivity", "Position Increase");
 
@@ -118,8 +156,7 @@ public class MapsActivity extends MenuActivity implements OnMapReadyCallback {
                     } else {
                         Toast.makeText(getApplicationContext(), "Info clicked = " + d.getName().toString() + " does not have a beacon associated with it", Toast.LENGTH_SHORT).show();
                     }
-                } else
-                {
+                } else {
                     Toast.makeText(getApplicationContext(), "Info clicked = " + d.getName().toString() + " is not a valid destination", Toast.LENGTH_SHORT).show();
                 }
 
@@ -139,30 +176,61 @@ public class MapsActivity extends MenuActivity implements OnMapReadyCallback {
         });
 
 
+    }
+
+    private void configureDestinaotions(ArrayList<Destination> dbDataDestinations) {
+        for(Destination d : dbDataDestinations){
+            Log.i("Configure Destionation", d.getRegionTitle()+d.getUUID()+d.getBeaconMajor()+
+                    d.getBecaonMinor()+ d.getLat()+d.getLng());
+            d.setRegion(d.getRegionTitle(),d.getUUID(),d.getBeaconMajor(),d.getBecaonMinor());
+            d.setLatLng(d.getLat(),d.getLng());
+        }
+    }
+
+    public static void getDataFromFireBase(Context context) {
+
+
+        Firebase.setAndroidContext(context.getApplicationContext());
+        myFirebaseRef = new Firebase("https://testobjects2.firebaseio.com/");
+
+
+        myFirebaseRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+//                dbDataDestinatios = dataSnapshot.getValue();
+                Log.i("myFireBase", "children count==============" + dataSnapshot.getChildrenCount());
+                for (DataSnapshot dss : dataSnapshot.getChildren()) {
+                    Log.i("myFireBase", "dss==============" + dss.getValue().toString());
+                    Destination d = dss.getValue(Destination.class);
+                    Log.i("myFireBase", d.getDescription());
+                    dbDataDestinatios.add(d);
+                    d.setRegion();
+                    d.setLatLng();
+
+                }
+
+
+            }
+
+            @Override
+            public void onCancelled(FirebaseError firebaseError) {
+
+            }
+        });
+
+        // TODO initialize all the pre-requisite needed
 
     }
 
-    private void intialize() {
-
-
-    // TODO initialize all the pre-requisite needed
-
-    }
-
-
-
-
-    private void stopAllBeaconMonitoring(){
+    private void stopAllBeaconMonitoring() {
         BeaconManager bm = MapsActivity.getBeaconManager();
         for (Destination d : Destination.getDestinations()) {
-            if(d.getRegion() != null)
-            {
+            if (d.getRegion() != null) {
                 bm.stopMonitoring(d.getRegion());
 
             }
         }
     }
-
 
     /**
      * Manipulates the map once available.
@@ -185,9 +253,8 @@ public class MapsActivity extends MenuActivity implements OnMapReadyCallback {
         for (Destination d : Destination.getDestinations()) {
             mo = new MarkerOptions().position(d.getLatLng()).title(d.getName())
                     .snippet("Click Here To Start Navigation");
-            if(Utility.getTourStatus().get(d))
-            {
-                Log.i("MapsActivity" , "True for visited");
+            if (Utility.getTourStatus().get(d)) {
+                Log.i("MapsActivity", "True for visited");
                 mo.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
             }
 
@@ -233,7 +300,7 @@ public class MapsActivity extends MenuActivity implements OnMapReadyCallback {
             @Override
             public void onInfoWindowClick(Marker marker) {
                 stopAllBeaconMonitoring();
-                Toast.makeText(getApplicationContext(),"Info clicked = "+marker.getTitle().toString(),Toast.LENGTH_SHORT).show();
+                Toast.makeText(getApplicationContext(), "Info clicked = " + marker.getTitle().toString(), Toast.LENGTH_SHORT).show();
                 Destination d = Destination.getDestinationBasedOnName(marker.getTitle().toString());
 
                 if (d != null) {
@@ -245,8 +312,7 @@ public class MapsActivity extends MenuActivity implements OnMapReadyCallback {
                     } else {
                         Toast.makeText(getApplicationContext(), "Info clicked = " + marker.getTitle().toString() + " does not a beacon associated with it", Toast.LENGTH_SHORT).show();
                     }
-                } else
-                {
+                } else {
                     Toast.makeText(getApplicationContext(), "Info clicked = " + marker.getTitle().toString() + " is not a valid destination", Toast.LENGTH_SHORT).show();
                 }
 
@@ -285,11 +351,10 @@ public class MapsActivity extends MenuActivity implements OnMapReadyCallback {
 //        mapIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
 //        mapIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
         mapIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        mapIntent.putExtra("DESTINATION",d);
+        mapIntent.putExtra("DESTINATION", d);
         mapIntent.setPackage("com.google.android.apps.maps");
-        startActivityForResult(mapIntent,100);
+        startActivityForResult(mapIntent, 100);
     }
-
 
     private void setBeaconMonitoring(final Region region) {
 
@@ -305,7 +370,6 @@ public class MapsActivity extends MenuActivity implements OnMapReadyCallback {
             }
 
 
-
         });
 
         beaconManager.setMonitoringListener(new BeaconManager.MonitoringListener() {
@@ -313,9 +377,8 @@ public class MapsActivity extends MenuActivity implements OnMapReadyCallback {
             @Override
             public void onEnteredRegion(Region region, List<Beacon> list) {
 
-                for(Beacon b : list)
-                {
-                    Log.i("List of beacons sensed ",b.getMajor() + "-" + b.getMinor() + "-" + b.getProximityUUID());
+                for (Beacon b : list) {
+                    Log.i("List of beacons sensed ", b.getMajor() + "-" + b.getMinor() + "-" + b.getProximityUUID());
                 }
 
                 Intent i = new Intent(appContext, ViewDestinationDetailActivity.class);
@@ -343,50 +406,6 @@ public class MapsActivity extends MenuActivity implements OnMapReadyCallback {
             }
         });
     }
-
-
-
-    public static void showNotification(String title, String message) {
-        Intent notifyIntent = new Intent(MapsActivity.appContext, ViewDestinationDetailActivity.class);
-        notifyIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        Destination d = Destination.getDestinationBasedOnName(title);
-        if(d != null)
-        {
-            notifyIntent.putExtra("DESTINATION", d.getName());
-            PendingIntent pendingIntent = PendingIntent.getActivities(MapsActivity.appContext, 0,
-                    new Intent[]{notifyIntent}, PendingIntent.FLAG_UPDATE_CURRENT);
-            Notification notification = new Notification.Builder(MapsActivity.appContext)
-                    .setSmallIcon(android.R.drawable.ic_dialog_info)
-                    .setContentTitle(title)
-                    .setContentText(message)
-                    .setAutoCancel(true)
-                    .setContentIntent(pendingIntent)
-                    .build();
-            notification.defaults |= Notification.DEFAULT_SOUND;
-            NotificationManager notificationManager =
-                    (NotificationManager) MapsActivity.appContext.getSystemService(Context.NOTIFICATION_SERVICE);
-            notificationManager.notify(1, notification);
-        }
-        else
-        {
-            return;
-        }
-
-
-
-    }
-
-    public static void stopNavigation(){
-        ActivityManager am = (ActivityManager) appContext.getSystemService(ACTIVITY_SERVICE);
-
-        for (ActivityManager.RunningAppProcessInfo pid : am.getRunningAppProcesses())
-        {
-            if (pid.processName.equals("com.google.android.apps.maps"))
-                am.killBackgroundProcesses("com.google.android.apps.maps");
-        }
-
-    }
-
 
 
 }

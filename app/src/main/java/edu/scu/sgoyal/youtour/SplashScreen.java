@@ -29,7 +29,10 @@ public class SplashScreen extends Activity
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_splashscreen);
+        MapsActivity.getDataFromFireBase(getApplicationContext());
         StartAnimations();
+
+
     }
 
     private void StartAnimations() {
