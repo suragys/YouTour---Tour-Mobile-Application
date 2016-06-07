@@ -9,8 +9,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
 import android.view.MenuItem;
 
-import com.firebase.client.Firebase;
-
 /**
  * Created by shubhamgoyal on 5/24/16.
  */
@@ -59,6 +57,10 @@ public class MenuActivity extends AppCompatActivity
             case R.id.rating:
                 Intent rating = new Intent(MenuActivity.this,Rating.class);
                 startActivity(rating);
+                break;
+            case R.id.view360:
+                Intent view360 = new Intent(MenuActivity.this,View360Activity.class);
+                startActivity(view360);
                 break;
 //            case R.id.gallery:
 //                Intent gallery = new Intent(MenuActivity.this,Gallery.class);

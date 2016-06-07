@@ -27,4 +27,9 @@
           android:title="Survey"
           android:orderInCategory="100"
           app:showAsAction="never"/>
+
+    <item android:id="@+id/view360"
+        android:title="View360"
+        android:orderInCategory="100"
+        app:showAsAction="never"/>
 </menu>

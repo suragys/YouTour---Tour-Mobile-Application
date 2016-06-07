@@ -31,12 +31,12 @@ public class Rating extends MenuActivity
 
                 String newComment = comment.getText().toString();
 
-                d.getComments().add(newComment);
+                Destination.getDestinationBasedOnName(d.getName()).getComments().add(newComment);
                 int index = Destination.getDestinations().indexOf(Destination.getDestinationBasedOnName(d.getName()));
                 Log.i("Index of Sdsfai", "=============INdex = "+ index + d.getName());
 
                 MapsActivity.myFirebaseRef.child(String.valueOf(index))
-                        .child("comments").setValue(d.getComments());
+                        .child("comments").setValue(Destination.getDestinationBasedOnName(d.getName()).getComments());
 
                 Intent i = new Intent(Rating.this.getApplicationContext(), MapsActivity.class);
 //                Intent i = new Intent(appContext, ViewDestinationDetailActivity.class);
